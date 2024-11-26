@@ -7,24 +7,49 @@
 #include "locomotivebehavior.h"
 #include "ctrain_handler.h"
 
-void LocomotiveBehavior::run()
-{
-    //Initialisation de la locomotive
+void swapSens(int &a, int &b){
+    int tmp = a;
+    a = b;
+    b = tmp;
+}
+
+void LocomotiveBehavior::run() {
+    int laps = 0;
+
     loco.allumerPhares();
     loco.demarrer();
-    loco.afficherMessage("Ready!");
+    loco.afficherMessage("Locomotive démarrée");
 
-    /* A vous de jouer ! */
+    while (true) {
+        // Effectuer N tours définis pour cette locomotive
+        while (laps < nbTours) {
+            // Access the shared section.
+            attendre_contact(accessPoint1); // Point before shared section.
+            sharedSection->access(loco);
 
-    // Vous pouvez appeler les méthodes de la section partagée comme ceci :
-    //sharedSection->access(loco);
-    //sharedSection->leave(loco);
+            dirigerAiguillages(aiguillages);
 
-    while(true) {
-        // On attend qu'une locomotive arrive sur le contact 1.
-        // Pertinent de faire ça dans les deux threads? Pas sûr...
-        attendre_contact(1);
-        loco.afficherMessage("J'ai atteint le contact 1");
+            attendre_contact(accessPoint2); // Exit point of shared section.
+            sharedSection->leave(loco);
+
+            attendre_contact(stationPoint);
+            loco.afficherMessage("Tour complété");
+            laps++;
+        }
+
+        loco.afficherMessage("Arrivée à la station");
+        loco.arreter();
+        sharedStation.arriveAtStation();
+
+        // Attendre avant de redémarrer
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        loco.demarrer();
+
+        // Inverser le sens après les tours
+        loco.afficherMessage("Inversion de direction");
+        loco.inverserSens();
+        swapSens(accessPoint1, accessPoint2);
+        laps = 0;
     }
 }
 
@@ -38,4 +63,9 @@ void LocomotiveBehavior::printCompletionMessage()
 {
     qDebug() << "[STOP] Thread de la loco" << loco.numero() << "a terminé correctement";
     loco.afficherMessage("J'ai terminé");
+}
+
+void LocomotiveBehavior::dirigerAiguillages(std::vector<std::pair<int, int>> locoAiguillages) {
+    for (size_t i = 0; i < locoAiguillages.size(); ++i)
+        diriger_aiguillage(locoAiguillages[i].first, locoAiguillages[i].second, 0);
 }

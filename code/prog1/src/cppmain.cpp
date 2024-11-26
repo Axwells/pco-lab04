@@ -23,7 +23,8 @@ static Locomotive locoB(42 /* Numéro (pour commande trains sur maquette réelle
 //Arret d'urgence
 void emergency_stop()
 {
-    // TODO
+    locoA.arreter();
+    locoB.arreter();
 
     afficher_message("\nSTOP!");
 }
@@ -86,6 +87,21 @@ int cmain()
     // Exemple de position de départ
     locoB.fixerPosition(22, 28);
 
+    /**************
+     * Constantes *
+     *************/
+
+    const int locoANbTours = 2;
+    const int locoBNbTours = 1;
+    const int locoAAccessPoint1 = 7;
+    const int locoAAccessPoint2 = 32;
+    const int locoBAccessPoint1 = 3;
+    const int locoBAccessPoint2 = 29;
+    const int locoAStation = 15;
+    const int locoBStation = 19;
+    const std::vector<std::pair<int, int>> locoAAiguillages = {{1,DEVIE}, {2,TOUT_DROIT}, {21,TOUT_DROIT}, {22,DEVIE}};
+    const std::vector<std::pair<int, int>> locoBAiguillages = {{1,TOUT_DROIT}, {22,TOUT_DROIT}};
+
     /***********
      * Message *
      **********/
@@ -100,10 +116,12 @@ int cmain()
     // Création de la section partagée
     std::shared_ptr<SharedSectionInterface> sharedSection = std::make_shared<SharedSection>();
 
+    SharedStation station(2);
+
     // Création du thread pour la loco 0
-    std::unique_ptr<Launchable> locoBehaveA = std::make_unique<LocomotiveBehavior>(locoA, sharedSection /*, autres paramètres ...*/);
+    std::unique_ptr<Launchable> locoBehaveA = std::make_unique<LocomotiveBehavior>(locoA, sharedSection, station, locoANbTours, locoAAccessPoint1, locoAAccessPoint2, locoAStation, locoAAiguillages);
     // Création du thread pour la loco 1
-    std::unique_ptr<Launchable> locoBehaveB = std::make_unique<LocomotiveBehavior>(locoB, sharedSection /*, autres paramètres ...*/);
+    std::unique_ptr<Launchable> locoBehaveB = std::make_unique<LocomotiveBehavior>(locoB, sharedSection, station, locoBNbTours, locoBAccessPoint1, locoBAccessPoint2, locoBStation, locoBAiguillages);
 
     // Lanchement des threads
     afficher_message(qPrintable(QString("Lancement thread loco A (numéro %1)").arg(locoA.numero())));

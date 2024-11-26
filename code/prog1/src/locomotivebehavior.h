@@ -10,6 +10,7 @@
 #include "locomotive.h"
 #include "launchable.h"
 #include "sharedsectioninterface.h"
+#include "sharedstation.h"
 
 /**
  * @brief La classe LocomotiveBehavior représente le comportement d'une locomotive
@@ -21,7 +22,10 @@ public:
      * \brief locomotiveBehavior Constructeur de la classe
      * \param loco la locomotive dont on représente le comportement
      */
-    LocomotiveBehavior(Locomotive& loco, std::shared_ptr<SharedSectionInterface> sharedSection /*, autres paramètres éventuels */) : loco(loco), sharedSection(sharedSection) {
+    LocomotiveBehavior(Locomotive& loco,
+                           std::shared_ptr<SharedSectionInterface> sharedSection,
+                           SharedStation& station, int nbTours, int accessPoint1, int accessPoint2, int stationPoint, std::vector<std::pair<int, int>> aiguillages)
+            : loco(loco), sharedSection(sharedSection), sharedStation(station), nbTours(nbTours), accessPoint1(accessPoint1), accessPoint2(accessPoint2), stationPoint(stationPoint), aiguillages(aiguillages) {
         // Eventuel code supplémentaire du constructeur
     }
 
@@ -51,6 +55,15 @@ protected:
      */
     std::shared_ptr<SharedSectionInterface> sharedSection;
 
+    int nbTours;
+    int accessPoint1;
+    int accessPoint2;
+    int stationPoint;
+    std::vector<std::pair<int, int>> aiguillages;
+
+    SharedStation& sharedStation; // Ajout d'une référence à la station partagée
+
+    void dirigerAiguillages(std::vector<std::pair<int, int>> locoAiguillages);
     /*
      * Vous êtes libres d'ajouter des méthodes ou attributs
      *

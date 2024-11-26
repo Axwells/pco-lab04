@@ -2,7 +2,7 @@
 //   / _ \/ ___/ __ \  |_  |/ _ \|_  / / / //
 //  / ___/ /__/ /_/ / / __// // / __/_  _/ //
 // /_/   \___/\____/ /____/\___/____//_/   //
-//                                         //
+//
 
 #ifndef LOCOMOTIVEBEHAVIOR_H
 #define LOCOMOTIVEBEHAVIOR_H
@@ -10,6 +10,7 @@
 #include "locomotive.h"
 #include "launchable.h"
 #include "sharedsectioninterface.h"
+#include "sharedstation.h"
 
 /**
  * @brief La classe LocomotiveBehavior représente le comportement d'une locomotive
@@ -21,8 +22,10 @@ public:
      * \brief locomotiveBehavior Constructeur de la classe
      * \param loco la locomotive dont on représente le comportement
      */
-    LocomotiveBehavior(Locomotive& loco, std::shared_ptr<SharedSectionInterface> sharedSection /*, autres paramètres éventuels */) : loco(loco), sharedSection(sharedSection) {
-        // Eventuel code supplémentaire du constructeur
+    LocomotiveBehavior(Locomotive& loco,
+                           std::shared_ptr<SharedSectionInterface> sharedSection,
+                           SharedStation& station, int nbTours,int contactRequest, int contactRequest2, int contactAccess, int contactLeave, int stationPoint, std::vector<std::pair<int, int>> locoSwitches)
+            : loco(loco), sharedSection(sharedSection), sharedStation(station), nbTours(nbTours), contactRequest(contactRequest), contactRequest2(contactRequest2), contactAccess(contactAccess), contactLeave(contactLeave), stationPoint(stationPoint), locoSwitches(locoSwitches) {
     }
 
 protected:
@@ -51,11 +54,22 @@ protected:
      */
     std::shared_ptr<SharedSectionInterface> sharedSection;
 
-    /*
-     * Vous êtes libres d'ajouter des méthodes ou attributs
-     *
-     * Par exemple la priorité ou le parcours
+    int nbTours;
+    int contactRequest;
+    int contactRequest2;
+    int contactAccess;
+    int contactLeave;
+    int stationPoint;
+
+    std::vector<std::pair<int, int>> locoSwitches;
+    SharedStation& sharedStation;
+
+    /**
+     * @brief directSwitches Direct the switches needed for the train to follow his course
+     * @param locoSwitches Vector of pairs containing the id of the switch and the direction wanted
      */
+    void directSwitches(std::vector<std::pair<int, int>> locoSwitches);
+
 };
 
 #endif // LOCOMOTIVEBEHAVIOR_H

@@ -20,71 +20,107 @@
  * @brief La classe SharedSection implémente l'interface SharedSectionInterface qui
  * propose les méthodes liées à la section partagée.
  */
-class SharedSection final : public SharedSectionInterface
-{
+class SharedSection final : public SharedSectionInterface {
 public:
+    SharedSection() : sem(1), accessSemaphore(1), isAvailable(true), currentMode(PriorityMode::HIGH_PRIORITY) {}
 
     /**
-     * @brief SharedSection Constructeur de la classe qui représente la section partagée.
-     * Initialisez vos éventuels attributs ici, sémaphores etc.
-     */
-    SharedSection() {
-        // TODO
-    }
-
-    /**
-     * @brief request Méthode a appeler pour indiquer que la locomotive désire accéder à la
-     * section partagée (deux contacts avant la section partagée).
-     * @param loco La locomotive qui désire accéder
-     * @param locoId L'identidiant de la locomotive qui fait l'appel
-     * @param entryPoint Le point d'entree de la locomotive qui fait l'appel
+     * @brief request Makes a request to access the shared section.
+     * Stores the priority of the requesting locomotive.
+     * @param loco The locomotive requesting access.
+     * @param priority The priority of the locomotive making the request.
      */
     void request(Locomotive& loco, int priority) override {
-        // TODO
-
-        // Exemple de message dans la console globale
-        afficher_message(qPrintable(QString("The engine no. %1 requested the shared section.").arg(loco.numero())));
+        isPriorityModeChanged = false;
+        accessSemaphore.acquire();
+        locoPriorities[loco.numero()] = priority;
+        loco.afficherMessage(QString("Request to shared section made with priority %1").arg(priority));
+        accessSemaphore.release();
     }
 
     /**
-     * @brief getAccess Méthode à appeler pour accéder à la section partagée, doit arrêter la
-     * locomotive et mettre son thread en attente si la section est occupée ou va être occupée
-     * par une locomotive de plus haute priorité. Si la locomotive et son thread ont été mis en
-     * attente, le thread doit être reveillé lorsque la section partagée est à nouveau libre et
-     * la locomotive redémarée. (méthode à appeler un contact avant la section partagée).
-     * @param loco La locomotive qui essaie accéder à la section partagée
-     * @param locoId L'identidiant de la locomotive qui fait l'appel
+     * @brief access Grants access to the shared section if available and no higher-priority requests exist.
+     * If access is denied, the locomotive waits until the section is available.
+     * @param loco The locomotive attempting to access the shared section.
+     * @param priority The priority of the locomotive attempting to access.
      */
     void access(Locomotive &loco, int priority) override {
-        // TODO
+        while (true) {
+            accessSemaphore.acquire();
 
-        // Exemple de message dans la console globale
-        afficher_message(qPrintable(QString("The engine no. %1 accesses the shared section.").arg(loco.numero())));
+            if (isAvailable && !hasHigherPriorityRequest(priority, loco.numero())) {
+                isAvailable = false;
+                accessSemaphore.release();
+                break;
+            }
+            accessSemaphore.release();
+
+            loco.arreter();
+            loco.afficherMessage("Waiting for shared section access");
+
+            // Small delay to avoid spinning and allow other threads to update state
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+
+        sem.acquire();
+        loco.afficherMessage("Accessing shared section");
+        loco.demarrer();
     }
 
     /**
-     * @brief leave Méthode à appeler pour indiquer que la locomotive est sortie de la section
-     * partagée. (reveille les threads des locomotives potentiellement en attente).
-     * @param loco La locomotive qui quitte la section partagée
-     * @param locoId L'identidiant de la locomotive qui fait l'appel
+     * @brief leave Releases the shared section after a locomotive exits.
+     * Marks the section as available and removes the locomotive's priority entry.
+     * @param loco The locomotive leaving the shared section.
      */
     void leave(Locomotive& loco) override {
-        // TODO
+        accessSemaphore.acquire();
 
-        // Exemple de message dans la console globale
-        afficher_message(qPrintable(QString("The engine no. %1 leaves the shared section.").arg(loco.numero())));
+        isAvailable = true;
+        locoPriorities.erase(loco.numero()); // Let the waiting train have the priority
+        loco.afficherMessage("Leaving shared section");
+
+        accessSemaphore.release();
+        sem.release();
     }
 
-    void togglePriorityMode() {
-        /* TODO */
+    /**
+     * @brief togglePriorityMode Toggles the priority mode between HIGH_PRIORITY and LOW_PRIORITY.
+     * Ensures this action happens only once during a cycle.
+     */
+    void togglePriorityMode() override {
+        accessSemaphore.acquire();
+        if(!isPriorityModeChanged)
+            currentMode = (currentMode == PriorityMode::HIGH_PRIORITY) ? PriorityMode::LOW_PRIORITY : PriorityMode::HIGH_PRIORITY;
+        isPriorityModeChanged = true;
+        accessSemaphore.release();
     }
 
 private:
+    PcoSemaphore sem;
+    PcoSemaphore accessSemaphore;
+    bool isAvailable;
+    PriorityMode currentMode;
+    bool isPriorityModeChanged;
+    std::map<int, int> locoPriorities;
 
-    /* A vous d'ajouter ce qu'il vous faut */
-
-    // Méthodes privées ...
-    // Attributes privés ...
+    /**
+     * @brief hasHigherPriorityRequest Checks if a higher-priority request exists in the queue.
+     * Evaluates based on the current priority mode (HIGH_PRIORITY or LOW_PRIORITY).
+     * @param priority The priority of the requesting locomotive.
+     * @param locoId The ID of the requesting locomotive.
+     * @return True if a higher-priority request exists, false otherwise.
+     */
+    bool hasHigherPriorityRequest(int priority, int locoId) {
+        for (const auto& entry : locoPriorities) {
+            if (entry.first != locoId) {
+                if ((currentMode == PriorityMode::HIGH_PRIORITY && entry.second > priority) ||
+                    (currentMode == PriorityMode::LOW_PRIORITY && entry.second < priority)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 };
 
 

@@ -1,9 +1,8 @@
-//    ___  _________    ___  ___  ___ ____ //
+﻿//    ___  _________    ___  ___  ___ ____ //
 //   / _ \/ ___/ __ \  |_  |/ _ \|_  / / / //
 //  / ___/ /__/ /_/ / / __// // / __/_  _/ //
 // /_/   \___/\____/ /____/\___/____//_/   //
-//                                         //
-
+//
 
 #include "ctrain_handler.h"
 
@@ -24,7 +23,8 @@ static Locomotive locoB(42 /* Numéro (pour commande trains sur maquette réelle
 //Arret d'urgence
 void emergency_stop()
 {
-    // TODO
+    locoA.arreter();
+    locoB.arreter();
 
     afficher_message("\nSTOP!");
 }
@@ -80,12 +80,35 @@ int cmain()
      ********************************/
 
     // Loco 0
-    // Exemple de position de départ
     locoA.fixerPosition(25, 32);
 
     // Loco 1
-    // Exemple de position de départ
     locoB.fixerPosition(22, 28);
+
+    locoA.priority = rand() % 11;
+    locoB.priority = rand() % 11;
+
+    /**************
+     * Constants *
+     *************/
+
+    const int locoANbLaps = 2;
+    const int locoBNbLaps = 1;
+
+    const int locoAContactRequest = 15;
+    const int locoAContactRequest2 = 24;
+    const int locoAContactAccess = 7;
+    const int locoAContactLeave = 32;
+
+    const int locoBContactRequest = 11;
+    const int locoBContactRequest2 = 21;
+    const int locoBContactAccess = 3;
+    const int locoBContactLeave = 29;
+
+    const int locoAStation = 16;
+    const int locoBStation = 19;
+    const std::vector<std::pair<int, int>> locoASwitches = {{1,DEVIE}, {2,TOUT_DROIT}, {21,TOUT_DROIT}, {22,DEVIE}};
+    const std::vector<std::pair<int, int>> locoBswitches = {{1,TOUT_DROIT}, {22,TOUT_DROIT}};
 
     /***********
      * Message *
@@ -101,12 +124,14 @@ int cmain()
     // Création de la section partagée
     std::shared_ptr<SharedSectionInterface> sharedSection = std::make_shared<SharedSection>();
 
-    // Création du thread pour la loco 0
-    std::unique_ptr<Launchable> locoBehaveA = std::make_unique<LocomotiveBehavior>(locoA, sharedSection /*, autres paramètres ...*/);
-    // Création du thread pour la loco 1
-    std::unique_ptr<Launchable> locoBehaveB = std::make_unique<LocomotiveBehavior>(locoB, sharedSection /*, autres paramètres ...*/);
+    SharedStation station(2);
 
-    // Lanchement des threads
+    // Création du thread pour la loco 0
+    std::unique_ptr<Launchable> locoBehaveA = std::make_unique<LocomotiveBehavior>(locoA, sharedSection, station, locoANbLaps, locoAContactRequest, locoAContactRequest2, locoAContactAccess, locoAContactLeave, locoAStation, locoASwitches);
+    // Création du thread pour la loco 1
+    std::unique_ptr<Launchable> locoBehaveB = std::make_unique<LocomotiveBehavior>(locoB, sharedSection, station, locoBNbLaps, locoBContactRequest, locoBContactRequest2, locoBContactAccess, locoBContactLeave, locoBStation, locoBswitches);
+
+    // Lancement des threads
     afficher_message(qPrintable(QString("Lancement thread loco A (numéro %1)").arg(locoA.numero())));
     locoBehaveA->startThread();
     afficher_message(qPrintable(QString("Lancement thread loco B (numéro %1)").arg(locoB.numero())));

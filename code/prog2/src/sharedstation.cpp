@@ -9,5 +9,15 @@
 
 #include "sharedstation.h"
 
-SharedStation::SharedStation(int nbTrains, int nbTours)
-{}
+void SharedStation::arriveAtStation() {
+        trainsWaiting++;
+        if (trainsWaiting < totalTrains) {
+            stationSemaphore.acquire(); // Wait for second train
+        } else {
+            trainsWaiting = 0;
+
+            for(int i = 1; i < totalTrains; ++i){
+                stationSemaphore.release(); // Let first train go
+            }
+        }
+    }

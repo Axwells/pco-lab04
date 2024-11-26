@@ -27,8 +27,7 @@ public:
      * @brief SharedSection Constructeur de la classe qui représente la section partagée.
      * Initialisez vos éventuels attributs ici, sémaphores etc.
      */
-    SharedSection() {
-        // TODO
+    SharedSection() :sem(1) {
     }
 
     /**
@@ -40,10 +39,17 @@ public:
      * @param loco La locomotive qui essaie accéder à la section partagée
      */
     void access(Locomotive &loco) override {
-        // TODO
+        // Check if the shared section is available
+        if (!isAvailable) {
+            loco.arreter(); // Stop the locomotive only if the section is in use
+            afficher_message(qPrintable(QString("Locomotive %1 waiting for shared section").arg(loco.numero())));
+        }
 
-        // Exemple de message dans la console globale
-        afficher_message(qPrintable(QString("The engine no. %1 accesses the shared section.").arg(loco.numero())));
+        isAvailable = false; // Mark the shared section as in use
+        sem.acquire(); // Block and acquire the semaphore
+
+        loco.demarrer(); // Restart the locomotive
+        afficher_message(qPrintable(QString("Locomotive %1 enters the shared section").arg(loco.numero())));
     }
 
     /**
@@ -51,16 +57,17 @@ public:
      * partagée. (reveille les threads des locomotives potentiellement en attente).
      * @param loco La locomotive qui quitte la section partagée
      */
-    void leave(Locomotive& loco) override {
-        // TODO
-
-        // Exemple de message dans la console globale
-        afficher_message(qPrintable(QString("The engine no. %1 leaves the shared section.").arg(loco.numero())));
+    void leave(Locomotive &loco) override {
+        afficher_message(qPrintable(QString("Locomotive %1 leaves the shared section").arg(loco.numero())));
+        isAvailable = true;
+        sem.release(); // Release access to the shared section.
     }
 
 private:
 
     /* A vous d'ajouter ce qu'il vous faut */
+    PcoSemaphore sem;
+    bool isAvailable;
 
     // Méthodes privées ...
     // Attribut privés ...
